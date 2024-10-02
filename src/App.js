@@ -6,12 +6,44 @@ import dayjs from 'dayjs';
 import React, { useState } from 'react';
 
 import { createClient } from '@supabase/supabase-js';
+import supabase from './supabaseClient';
 
 const supabaseUrl = 'https://hvwdkuoptfkpoahkgevk.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh2d2RrdW9wdGZrcG9haGtnZXZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjc4NjU2MDYsImV4cCI6MjA0MzQ0MTYwNn0.bKCUEjR7-phG9PZqDNLnxeAdT_BC6FsuQYbX4Kuzhuc';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default supabase;
+
+const handleSubmit = async () => {
+    const dataToSubmit = {
+        date: selectedDate,
+        time_period: timePeriod,  // Morning or Evening
+        stall_number: 1, // example
+        can_1: can1,
+        can_2: can2,
+        idly: idly,
+        dosa_packets: dosaPackets,
+        idly_packets: idlyPackets,
+        return_can_1: returnCan1,
+        return_can_2: returnCan2,
+        return_idly: returnIdly,
+        return_dosa_packets: returnDosaPackets,
+        return_idly_packets: returnIdlyPackets,
+        amount: amount,
+        dosasPerKG: dosasPerKG,
+        remarks: remarks
+    };
+
+    const { data, error } = await supabase
+        .from('daily_tracking')
+        .insert([dataToSubmit]);
+
+    if (error) {
+        console.error("Error submitting data: ", error);
+    } else {
+        console.log("Data submitted successfully: ", data);
+    }
+};
 
 const stalls = Array.from({ length: 6 }, (_, i) => `Stall ${i + 1}`);
 const DailyTracking = () => {
