@@ -6,37 +6,6 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import dayjs from 'dayjs';
 import React, { useState } from 'react';
 
-/* const handleSubmit = async () => {
-  const dataToSubmit = {
-    date: selectedDate,
-    time_period: timePeriod, // Morning or Evening
-    stall_number: 1, // example
-    can_1: can1,
-    can_2: can2,
-    idly: idly,
-    dosa_packets: dosaPackets,
-    idly_packets: idlyPackets,
-    return_can_1: returnCan1,
-    return_can_2: returnCan2,
-    return_idly: returnIdly,
-    return_dosa_packets: returnDosaPackets,
-    return_idly_packets: returnIdlyPackets,
-    amount: amount,
-    dosasPerKG: dosasPerKG,
-    remarks: remarks,
-  };
-
-  const { data, error } = await supabase
-    .from('daily_tracking')
-    .insert([dataToSubmit]);
-
-  if (error) {
-    console.error('Error submitting data: ', error);
-  } else {
-    console.log('Data submitted successfully: ', data);
-  }
-}; */
-
 const stalls = Array.from({ length: 6 }, (_, i) => `Stall ${i + 1}`);
 const DailyTracking = () => {
   const [date, setDate] = useState(dayjs());
@@ -62,11 +31,45 @@ const DailyTracking = () => {
     })),
   );
 
+  const handleSubmit = async () => {
+    console.log('stallData : ', stallData);
+    /* const dataToSubmit = {
+      date: selectedDate,
+      time_period: timePeriod, // Morning or Evening
+      stall_number: 1, // example
+      can_1: can1,
+      can_2: can2,
+      idly: idly,
+      dosa_packets: dosaPackets,
+      idly_packets: idlyPackets,
+      return_can_1: returnCan1,
+      return_can_2: returnCan2,
+      return_idly: returnIdly,
+      return_dosa_packets: returnDosaPackets,
+      return_idly_packets: returnIdlyPackets,
+      amount: amount,
+      dosasPerKG: dosasPerKG,
+      remarks: remarks,
+    };
+
+    const { data, error } = await supabase
+      .from('daily_tracking')
+      .insert([dataToSubmit]);
+
+    if (error) {
+      console.error('Error submitting data: ', error);
+    } else {
+      console.log('Data submitted successfully: ', data);
+    } */
+  };
+
   const handleInputChange = (stallIndex, field, value) => {
     const newStallData = [...stallData];
     newStallData[stallIndex][field] = value;
+    console.log('newStallData : ', newStallData);
     setStallData(newStallData);
   };
+
   return (
     <Box sx={{ padding: 2, backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -279,9 +282,8 @@ const DailyTracking = () => {
             color="primary"
             onClick={() => {
               // Here you'd handle the data submission to the database
-              console.log('Date:', date.format('YYYY-MM-DD'));
-              console.log('Time:', time);
-              console.log('Stall Data:', stallData);
+
+              handleSubmit();
               // Send data to your backend or local database
             }}
           >
