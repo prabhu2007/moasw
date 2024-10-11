@@ -1,122 +1,124 @@
 import { Box, Button, Grid, TextField, Typography } from '@mui/material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-
 import dayjs from 'dayjs';
 import React, { useState } from 'react';
+import RawMaterialDetails from './components/RawMaterialDetails';
+import cleanedStallData from './helpers/cleanedStallData';
+import { stallCalc } from './helpers/stallCalc';
+import { supabase } from './supabaseClient';
 
-const stalls = Array.from({ length: 6 }, (_, i) => `Stall ${i + 1}`);
+const stalls = Array.from({ length: 6 }, (_, i) => `MoA ${i + 1}`);
 const DailyTracking = () => {
-  const [date, setDate] = useState(dayjs());
-  const [time, setTime] = useState('Morning');
   const [stallData, setStallData] = useState(
-    stalls.map(() => ({
-      can1: '',
-      can2: '',
-      dosaPackets: '',
-      idlyPackets: '',
-      idlies: '',
+    stalls.map((stall, index) => ({
+      stallNumber: index + 1,
+      sentCan1: '',
+      sentCan2: '',
+      sentDosaPackets: '',
+      sentIdlyPackets: '',
+      sentIdlies: '',
       returnCan1: '',
       returnCan2: '',
       returnDosaPackets: '',
       returnIdlyPackets: '',
       returnIdlies: '',
-      amount: '',
-      actualBatterUsed: 0,
-      idliesSold: 0,
-      dosaPacketsSold: 0,
-      idlyPacketsSold: 0,
-      dosasPerKG: 0,
+      online: '',
+      cash: '',
+      actualBatterUsed: '',
+      idliesSold: '',
+      dosaPacketsSold: '',
+      idlyPacketsSold: '',
+      dosasPerKG: '',
+      remarks: 'Test',
     })),
   );
 
-  const handleSubmit = async () => {
-    console.log('stallData : ', stallData);
-    /* const dataToSubmit = {
-      date: selectedDate,
-      time_period: timePeriod, // Morning or Evening
-      stall_number: 1, // example
-      can_1: can1,
-      can_2: can2,
-      idly: idly,
-      dosa_packets: dosaPackets,
-      idly_packets: idlyPackets,
-      return_can_1: returnCan1,
-      return_can_2: returnCan2,
-      return_idly: returnIdly,
-      return_dosa_packets: returnDosaPackets,
-      return_idly_packets: returnIdlyPackets,
-      amount: amount,
-      dosasPerKG: dosasPerKG,
-      remarks: remarks,
-    };
+  const [rawMaterialDetails, setRawMaterialDetails] = useState({
+    date: dayjs(),
+    time: 'Morning',
+    drum1Gullu: 0,
+    drum1Pindi: 0,
+    drum2Gullu: 0,
+    drum2Pindi: 0,
+    drum3Gullu: 0,
+    drum3Pindi: 0,
+    idlyGullu: 0,
+    idlyPindi: 0,
+  });
+  //735-25kgs
+  //2940 - 1
+  //1800 - 26kgs
 
-    const { data, error } = await supabase
-      .from('daily_tracking')
-      .insert([dataToSubmit]);
+  // Function to insert data into the daily_tracking and unit tables
+  const insertData = async (data) => {
+    try {
+      // Insert into daily_tracking table
+      const { data: stallData, error: stallError } = await supabase
+        .from('daily_tracking')
+        .insert(data.stallUpdatedData);
 
-    if (error) {
-      console.error('Error submitting data: ', error);
-    } else {
-      console.log('Data submitted successfully: ', data);
-    } */
+      if (stallError) {
+        throw new Error(
+          `Error inserting into daily_tracking: ${stallError.message}`,
+        );
+      }
+      console.log('Stall data inserted successfully:', stallData);
+
+      // Insert into unit table
+      const { data: rawData, error: rawError } = await supabase
+        .from('unit')
+        .insert([data.rawMaterialData]); // Use array to insert a single row
+
+      if (rawError) {
+        throw new Error(`Error inserting into unit: ${rawError.message}`);
+      }
+      console.log('Raw material data inserted successfully:', rawData);
+    } catch (error) {
+      console.error('Insert failed:', error.message);
+    }
   };
-
-  const handleInputChange = (stallIndex, field, value) => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    // Prepare the data from form fields
+    const dataToSubmit = cleanedStallData(stallData, rawMaterialDetails);
+    console.log('dataToSubmit : ', dataToSubmit);
+    insertData(dataToSubmit);
+  };
+  const handleInputChange = (stallIndex, field, value, stall) => {
     const newStallData = [...stallData];
     newStallData[stallIndex][field] = value;
+    const calculatedFinalValues = stallCalc(stall);
+    newStallData[stallIndex] = {
+      ...newStallData[stallIndex],
+      ...calculatedFinalValues,
+    };
     console.log('newStallData : ', newStallData);
     setStallData(newStallData);
   };
 
   return (
-    <Box sx={{ padding: 2, backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
+    <Box
+      sx={{
+        padding: 2,
+        backgroundColor: 'rgba(0, 0, 0, 0.04)',
+        borderRadius: '8px',
+      }}
+    >
       <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <DatePicker
-          label="Select Date"
-          value={date}
-          onChange={(newValue) => setDate(newValue)}
-          renderInput={(params) => <TextField {...params} />}
+        <RawMaterialDetails
+          setRawMaterialDetails={setRawMaterialDetails}
+          rawMaterialDetails={rawMaterialDetails}
         />
-        <TextField
-          select
-          label="Time"
-          value={time}
-          onChange={(e) => setTime(e.target.value)}
-          sx={{ marginLeft: 2 }}
-          SelectProps={{
-            native: true,
-          }}
-        >
-          <option value="Morning">Morning</option>
-          <option value="Evening">Evening</option>
-        </TextField>
         <Grid container spacing={2} sx={{ marginTop: 2 }}>
           {stallData.map((stall, index) => {
-            const actualBatterUsed =
-              parseFloat(stall.can1) +
-              parseFloat(stall.can2) -
-              (parseFloat(stall.returnCan1) + parseFloat(stall.returnCan2));
-            const idliesSold =
-              parseFloat(stall.idlies) - parseFloat(stall.returnIdlies);
-            const dosaPacketsSold =
-              parseFloat(stall.dosaPackets) -
-              parseFloat(stall.returnDosaPackets);
-            const idlyPacketsSold =
-              parseFloat(stall.idlyPackets) -
-              parseFloat(stall.returnIdlyPackets);
-            const revenueFromIdlies = idliesSold * 8;
-            const revenueFromIdlyPackets = idlyPacketsSold * 65;
-            const revenueFromDosaPackets = dosaPacketsSold * 65;
-            const totalRevenueFromItems =
-              revenueFromIdlies +
-              revenueFromIdlyPackets +
-              revenueFromDosaPackets;
-            const dosasPerKG =
-              actualBatterUsed > 0
-                ? (stall.amount - totalRevenueFromItems) / actualBatterUsed
-                : 0;
+            const {
+              actualBatterUsed,
+              idliesSold,
+              dosaPacketsSold,
+              idlyPacketsSold,
+              dosasPerKG,
+            } = stallCalc(stall);
             return (
               <Grid item xs={12} key={index}>
                 <Box
@@ -127,64 +129,106 @@ const DailyTracking = () => {
                     backgroundColor: '#fff',
                   }}
                 >
-                  <Typography variant="h6">{stalls[index]}</Typography>
+                  <Typography
+                    sx={{ fontWeight: 700, color: '#d32f2f' }}
+                    variant="h6"
+                  >
+                    {stalls[index]}
+                  </Typography>
 
                   {/* Send Section */}
-                  <Typography variant="subtitle1">Send</Typography>
+                  <Typography sx={{ fontWeight: 700 }} variant="subtitle1">
+                    Send
+                  </Typography>
                   <TextField
                     type="number"
                     label="Can 1"
-                    value={stall.can1}
+                    value={stall.sentCan1}
                     onChange={(e) =>
-                      handleInputChange(index, 'can1', e.target.value)
+                      handleInputChange(
+                        index,
+                        'sentCan1',
+                        Number(e.target.value),
+                        stall,
+                      )
                     }
                     sx={{ width: '100px', marginRight: 1 }}
                   />
                   <TextField
                     type="number"
                     label="Can 2"
-                    value={stall.can2}
+                    value={stall.sentCan2}
                     onChange={(e) =>
-                      handleInputChange(index, 'can2', e.target.value)
+                      handleInputChange(
+                        index,
+                        'sentCan2',
+                        Number(e.target.value),
+                        stall,
+                      )
                     }
                     sx={{ width: '100px', marginRight: 1 }}
                   />
                   <TextField
                     type="number"
                     label="Dosa Packets"
-                    value={stall.dosaPackets}
+                    value={stall.sentDosaPackets}
                     onChange={(e) =>
-                      handleInputChange(index, 'dosaPackets', e.target.value)
+                      handleInputChange(
+                        index,
+                        'sentDosaPackets',
+                        Number(e.target.value),
+                        stall,
+                      )
                     }
                     sx={{ width: '120px', marginRight: 1 }}
                   />
                   <TextField
                     type="number"
                     label="Idly Packets"
-                    value={stall.idlyPackets}
+                    value={stall.sentIdlyPackets}
                     onChange={(e) =>
-                      handleInputChange(index, 'idlyPackets', e.target.value)
+                      handleInputChange(
+                        index,
+                        'sentIdlyPackets',
+                        Number(e.target.value),
+                        stall,
+                      )
                     }
                     sx={{ width: '120px', marginRight: 1 }}
                   />
                   <TextField
                     type="number"
                     label="Idlies"
-                    value={stall.idlies}
+                    value={stall.sentIdlies}
                     onChange={(e) =>
-                      handleInputChange(index, 'idlies', e.target.value)
+                      handleInputChange(
+                        index,
+                        'sentIdlies',
+                        Number(e.target.value),
+                        stall,
+                      )
                     }
                     sx={{ width: '100px', marginRight: 1 }}
                   />
 
                   {/* Return Section */}
-                  <Typography variant="subtitle1">Return</Typography>
+                  <Typography
+                    sx={{ fontWeight: 700, marginTop: '10px' }}
+                    variant="subtitle1"
+                  >
+                    Return
+                  </Typography>
                   <TextField
                     type="number"
                     label="Return Can 1"
                     value={stall.returnCan1}
                     onChange={(e) =>
-                      handleInputChange(index, 'returnCan1', e.target.value)
+                      handleInputChange(
+                        index,
+                        'returnCan1',
+                        Number(e.target.value),
+                        stall,
+                      )
                     }
                     sx={{ width: '120px', marginRight: 1 }}
                   />
@@ -193,7 +237,12 @@ const DailyTracking = () => {
                     label="Return Can 2"
                     value={stall.returnCan2}
                     onChange={(e) =>
-                      handleInputChange(index, 'returnCan2', e.target.value)
+                      handleInputChange(
+                        index,
+                        'returnCan2',
+                        Number(e.target.value),
+                        stall,
+                      )
                     }
                     sx={{ width: '120px', marginRight: 1 }}
                   />
@@ -205,7 +254,8 @@ const DailyTracking = () => {
                       handleInputChange(
                         index,
                         'returnDosaPackets',
-                        e.target.value,
+                        Number(e.target.value),
+                        stall,
                       )
                     }
                     sx={{ width: '140px', marginRight: 1 }}
@@ -218,7 +268,8 @@ const DailyTracking = () => {
                       handleInputChange(
                         index,
                         'returnIdlyPackets',
-                        e.target.value,
+                        Number(e.target.value),
+                        stall,
                       )
                     }
                     sx={{ width: '140px', marginRight: 1 }}
@@ -228,18 +279,43 @@ const DailyTracking = () => {
                     label="Return Idlies"
                     value={stall.returnIdlies}
                     onChange={(e) =>
-                      handleInputChange(index, 'returnIdlies', e.target.value)
+                      handleInputChange(
+                        index,
+                        'returnIdlies',
+                        Number(e.target.value),
+                        stall,
+                      )
                     }
                     sx={{ width: '120px', marginRight: 1 }}
                   />
 
                   <TextField
                     type="number"
-                    label="Amount"
-                    value={stall.amount}
+                    label="Cash"
+                    value={stall.cash}
                     onChange={(e) =>
-                      handleInputChange(index, 'amount', e.target.value)
+                      handleInputChange(
+                        index,
+                        'cash',
+                        Number(e.target.value),
+                        stall,
+                      )
                     }
+                    sx={{ width: '120px', marginRight: 1 }}
+                  />
+
+                  <TextField
+                    label="Online"
+                    value={stall.online}
+                    onChange={(e) =>
+                      handleInputChange(
+                        index,
+                        'online',
+                        Number(e.target.value),
+                        stall,
+                      )
+                    }
+                    type="number"
                     sx={{ width: '120px', marginRight: 1 }}
                   />
                   <div>
@@ -267,7 +343,7 @@ const DailyTracking = () => {
                           color: dosasPerKG < 22 ? 'red' : 'green',
                         }}
                       >
-                        Dosas per KG: {dosasPerKG.toFixed(2)}
+                        Dosas per KG: {dosasPerKG}
                       </Typography>
                     </Box>
                   </div>
@@ -280,10 +356,10 @@ const DailyTracking = () => {
           <Button
             variant="contained"
             color="primary"
-            onClick={() => {
+            onClick={(e) => {
               // Here you'd handle the data submission to the database
 
-              handleSubmit();
+              handleSubmit(e);
               // Send data to your backend or local database
             }}
           >
