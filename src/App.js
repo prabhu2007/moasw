@@ -9,6 +9,7 @@ import {
 } from './helpers/fetchDailyTrackingData';
 import { initialRawmeterialData } from './helpers/initialRawmeterialData';
 import { initialStallData } from './helpers/intialStallData';
+import { sanitizedData } from './helpers/sanitizedData';
 import { stallCalc } from './helpers/stallCalc';
 import './styles.css';
 import { supabase } from './supabaseClient';
@@ -40,7 +41,8 @@ const DailyTracking = () => {
         setDailyTrackingData(dailyTracking);
         // Update stallData based on dailyTrackingData
         if (dailyTracking && dailyTracking.length > 0) {
-          setStallData(dailyTracking);
+          const updatedDailyTrackingData = sanitizedData(dailyTracking);
+          setStallData(updatedDailyTrackingData);
         } else {
           setStallData(initialStallData(stalls)); // Use initialStallData if no data is found
         }
@@ -58,7 +60,14 @@ const DailyTracking = () => {
           setRawMaterialDetails(updatedUnitData);
         } else {
           console.log('unitData ELSE==> ', unitData);
-          setRawMaterialDetails(initialRawmeterialData()); // Use initialStallData if no data is found
+          // setRawMaterialDetails(initialRawmeterialData()); // Use initialStallData if no data is found
+          const updatedUnitData = {
+            ...initialRawmeterialData(),
+            date: dayjs(unitData[0].date),
+            time: rawMaterialDetails.time,
+          };
+          console.log('unitData IFF ==> ', updatedUnitData);
+          setRawMaterialDetails(updatedUnitData);
         }
       } catch (error) {
         setError(error.message);
@@ -92,11 +101,6 @@ const DailyTracking = () => {
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
     }
-    /* if (rawMaterialDetails.date) {
-      const formattedDate = rawMaterialDetails.date.format('YYYY-MM-DD');
-      loadData(formattedDate, rawMaterialDetails.time);
-    } */
-
     debounceTimer.current = setTimeout(() => {
       const formattedDate = rawMaterialDetails.date
         ? dayjs(rawMaterialDetails.date).format('YYYY-MM-DD')
@@ -108,6 +112,14 @@ const DailyTracking = () => {
         formattedDate,
       );
       if (formattedDate !== prevDate || rawMaterialDetails.time !== prevTime) {
+        setStallData(initialStallData(stalls));
+        const updatedUnitData = {
+          ...initialRawmeterialData(),
+          date: rawMaterialDetails.date,
+          time: rawMaterialDetails.time || 'Morning',
+        };
+        console.log('useEffect unitData IFF ==> ', updatedUnitData);
+        setRawMaterialDetails(updatedUnitData);
         // Only call loadData if date has changed
         loadData(formattedDate, rawMaterialDetails.time || 'Morning');
         setPrevDate(formattedDate); // Update previous date

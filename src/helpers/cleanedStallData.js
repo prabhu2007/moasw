@@ -38,6 +38,7 @@ const cleanedStallData = (stallData, rawMaterialDetails) => {
     };
   });
   const rawMaterialData = {
+    ...rawMaterialDetails,
     date:
       rawMaterialDetails.date === ''
         ? null

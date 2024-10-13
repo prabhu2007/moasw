@@ -3,7 +3,7 @@ import dayjs from 'dayjs';
 export const initialRawmeterialData = () => {
   return {
     date: dayjs(),
-    time: 'Morning',
+    time: '',
     drum1Gullu: 0,
     drum1Pindi: 0,
     drum2Gullu: 0,
