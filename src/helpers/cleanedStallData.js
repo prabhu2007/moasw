@@ -1,9 +1,16 @@
+import dayjs from 'dayjs';
+
 const cleanedStallData = (stallData, rawMaterialDetails) => {
-  const date = rawMaterialDetails.date === '' ? null : rawMaterialDetails.date;
+  const date =
+    rawMaterialDetails.date === ''
+      ? null
+      : dayjs(rawMaterialDetails.date).format('YYYY-MM-DD');
+  const time = rawMaterialDetails.time === '' ? null : rawMaterialDetails.time;
   const stallUpdatedData = stallData.map((stall) => {
     return {
       ...stall,
       date,
+      time,
       sentCan1: stall.sentCan1 === '' ? null : stall.sentCan1,
       sentCan2: stall.sentCan2 === '' ? null : stall.sentCan2,
       sentDosaPackets:
@@ -31,7 +38,10 @@ const cleanedStallData = (stallData, rawMaterialDetails) => {
     };
   });
   const rawMaterialData = {
-    date: rawMaterialDetails.date === '' ? null : rawMaterialDetails.date,
+    date:
+      rawMaterialDetails.date === ''
+        ? null
+        : dayjs(rawMaterialDetails.date).format('YYYY-MM-DD'),
     time: rawMaterialDetails.time === '' ? null : rawMaterialDetails.time,
     drum1Gullu:
       rawMaterialDetails.drum1Gullu === ''

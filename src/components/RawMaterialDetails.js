@@ -1,7 +1,9 @@
 import { Box, TextField } from '@mui/material';
 import React from 'react';
 //import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import './styles.css';
 
 const RawMaterialDetails = ({ rawMaterialDetails, setRawMaterialDetails }) => {
@@ -22,17 +24,19 @@ const RawMaterialDetails = ({ rawMaterialDetails, setRawMaterialDetails }) => {
       }}
     >
       <div className="simple-border">
-        <DatePicker
-          label="Select Date"
-          value={rawMaterialDetails.date}
-          onChange={(newValue) =>
-            setRawMaterialDetails((prevDetails) => ({
-              ...prevDetails,
-              date: newValue,
-            }))
-          }
-          renderInput={(params) => <TextField {...params} margin="normal" />}
-        />
+        <LocalizationProvider dateAdapter={AdapterDayjs}>
+          <DatePicker
+            label="Select Date"
+            value={rawMaterialDetails.date}
+            onChange={(newValue) =>
+              setRawMaterialDetails((prevDetails) => ({
+                ...prevDetails,
+                date: newValue,
+              }))
+            }
+            renderInput={(params) => <TextField {...params} margin="normal" />}
+          />
+        </LocalizationProvider>
         <TextField
           select
           label="Time"

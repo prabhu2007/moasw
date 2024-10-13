@@ -1,62 +1,138 @@
 import { Box, Button, Grid, TextField, Typography } from '@mui/material';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import dayjs from 'dayjs';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import RawMaterialDetails from './components/RawMaterialDetails';
 import cleanedStallData from './helpers/cleanedStallData';
+import {
+  fetchDailyTrackingData,
+  fetchUnitData,
+} from './helpers/fetchDailyTrackingData';
+import { initialRawmeterialData } from './helpers/initialRawmeterialData';
+import { initialStallData } from './helpers/intialStallData';
 import { stallCalc } from './helpers/stallCalc';
+import './styles.css';
 import { supabase } from './supabaseClient';
 
 const stalls = Array.from({ length: 6 }, (_, i) => `MoA ${i + 1}`);
 const DailyTracking = () => {
-  const [stallData, setStallData] = useState(
-    stalls.map((stall, index) => ({
-      stallNumber: index + 1,
-      sentCan1: '',
-      sentCan2: '',
-      sentDosaPackets: '',
-      sentIdlyPackets: '',
-      sentIdlies: '',
-      returnCan1: '',
-      returnCan2: '',
-      returnDosaPackets: '',
-      returnIdlyPackets: '',
-      returnIdlies: '',
-      online: '',
-      cash: '',
-      actualBatterUsed: '',
-      idliesSold: '',
-      dosaPacketsSold: '',
-      idlyPacketsSold: '',
-      dosasPerKG: '',
-      remarks: 'Test',
-    })),
-  );
+  const [stallData, setStallData] = useState(initialStallData(stalls));
 
-  const [rawMaterialDetails, setRawMaterialDetails] = useState({
-    date: dayjs(),
-    time: 'Morning',
-    drum1Gullu: 0,
-    drum1Pindi: 0,
-    drum2Gullu: 0,
-    drum2Pindi: 0,
-    drum3Gullu: 0,
-    drum3Pindi: 0,
-    idlyGullu: 0,
-    idlyPindi: 0,
-  });
-  //735-25kgs
-  //2940 - 1
-  //1800 - 26kgs
+  const [rawMaterialDetails, setRawMaterialDetails] = useState(
+    initialRawmeterialData(),
+  );
+  //const [loading, setLoading] = useState(false);
+  const [prevDate, setPrevDate] = useState(null); // Track previous date
+  const [prevTime, setPrevTime] = useState(null);
+  const debounceTimer = useRef(null);
+
+  const useLoadData = () => {
+    const [dailyTrackingData, setDailyTrackingData] = useState(null);
+    const [unitData, setUnitData] = useState(null);
+    const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    const loadData = async (date, time) => {
+      try {
+        setLoading(true); // Set loading state before fetching
+
+        // Fetch daily_tracking data using helper
+        const dailyTracking = await fetchDailyTrackingData(date, time);
+        setDailyTrackingData(dailyTracking);
+        // Update stallData based on dailyTrackingData
+        if (dailyTracking && dailyTracking.length > 0) {
+          setStallData(dailyTracking);
+        } else {
+          setStallData(initialStallData(stalls)); // Use initialStallData if no data is found
+        }
+        // Fetch unit data using helper
+        const unitData = await fetchUnitData(date, time);
+        console.log('unitData ==> ', unitData);
+        setUnitData(unitData);
+        // Update stallData based on dailyTrackingData
+        if (unitData && unitData.length > 0) {
+          const updatedUnitData = {
+            ...unitData[0],
+            date: dayjs(unitData[0].date),
+          };
+          console.log('unitData IFF ==> ', updatedUnitData);
+          setRawMaterialDetails(updatedUnitData);
+        } else {
+          console.log('unitData ELSE==> ', unitData);
+          setRawMaterialDetails(initialRawmeterialData()); // Use initialStallData if no data is found
+        }
+      } catch (error) {
+        setError(error.message);
+      } finally {
+        setLoading(false); // Set loading state after fetching
+      }
+    };
+
+    return {
+      loadData,
+      dailyTrackingData,
+      unitData,
+      error,
+      loading,
+      setLoading,
+    };
+  };
+  const { loadData, dailyTrackingData, unitData, error, loading, setLoading } =
+    useLoadData();
+
+  // Call loadData when the app first initializes
+  useEffect(() => {
+    const initialDate = dayjs().format('YYYY-MM-DD'); // Current date when the app initializes
+    const initialTime = 'Morning'; // Default time
+    loadData(initialDate, initialTime);
+  }, []); // Empty dependency array means it runs only on component mount
+
+  // Call loadData when selectedDate or selectedTime changes
+  useEffect(() => {
+    // Clear the debounce timer
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    /* if (rawMaterialDetails.date) {
+      const formattedDate = rawMaterialDetails.date.format('YYYY-MM-DD');
+      loadData(formattedDate, rawMaterialDetails.time);
+    } */
+
+    debounceTimer.current = setTimeout(() => {
+      const formattedDate = rawMaterialDetails.date
+        ? dayjs(rawMaterialDetails.date).format('YYYY-MM-DD')
+        : dayjs().format('YYYY-MM-DD');
+      console.log(
+        'rawMaterialDetails.date : ',
+        rawMaterialDetails.date,
+        'formattedDate : ',
+        formattedDate,
+      );
+      if (formattedDate !== prevDate || rawMaterialDetails.time !== prevTime) {
+        // Only call loadData if date has changed
+        loadData(formattedDate, rawMaterialDetails.time || 'Morning');
+        setPrevDate(formattedDate); // Update previous date
+        setPrevTime(rawMaterialDetails.time); // Update previous time
+      }
+    }, 500);
+
+    // Cleanup timer on component unmount
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, [rawMaterialDetails.date, rawMaterialDetails.time]); // dependencies include selectedDate and selectedTime
 
   // Function to insert data into the daily_tracking and unit tables
   const insertData = async (data) => {
     try {
+      setLoading(true); // Start loading
       // Insert into daily_tracking table
       const { data: stallData, error: stallError } = await supabase
         .from('daily_tracking')
-        .insert(data.stallUpdatedData);
+        .upsert(data.stallUpdatedData, {
+          onConflict: ['id'], // Use 'id' column to determine whether to update or insert
+        });
 
       if (stallError) {
         throw new Error(
@@ -65,10 +141,14 @@ const DailyTracking = () => {
       }
       console.log('Stall data inserted successfully:', stallData);
 
+      console.log('data.rawMaterialData data insert:', data.rawMaterialData);
+
       // Insert into unit table
       const { data: rawData, error: rawError } = await supabase
         .from('unit')
-        .insert([data.rawMaterialData]); // Use array to insert a single row
+        .upsert(data.rawMaterialData, {
+          onConflict: ['id'], // Use 'id' column to determine whether to update or insert
+        });
 
       if (rawError) {
         throw new Error(`Error inserting into unit: ${rawError.message}`);
@@ -76,8 +156,11 @@ const DailyTracking = () => {
       console.log('Raw material data inserted successfully:', rawData);
     } catch (error) {
       console.error('Insert failed:', error.message);
+    } finally {
+      setLoading(false); // Stop loading
     }
   };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     // Prepare the data from form fields
@@ -98,20 +181,32 @@ const DailyTracking = () => {
   };
 
   return (
-    <Box
-      sx={{
-        padding: 2,
-        backgroundColor: 'rgba(0, 0, 0, 0.04)',
-        borderRadius: '8px',
-      }}
-    >
-      <LocalizationProvider dateAdapter={AdapterDayjs}>
+    <div>
+      {loading && (
+        <>
+          <div className="background-overlay"></div>
+          <div className="modal-loader">
+            <div className="loader"></div>
+            <p>Loading...</p>
+          </div>
+        </>
+      )}
+      <Box
+        sx={{
+          padding: 2,
+          backgroundColor: 'rgba(0, 0, 0, 0.04)',
+          borderRadius: '8px',
+        }}
+      >
+        {/* <LocalizationProvider dateAdapter={AdapterDayjs}></LocalizationProvider> */}
         <RawMaterialDetails
           setRawMaterialDetails={setRawMaterialDetails}
           rawMaterialDetails={rawMaterialDetails}
         />
         <Grid container spacing={2} sx={{ marginTop: 2 }}>
-          {stallData.map((stall, index) => {
+          {stallData.map((indStall, curIndex) => {
+            const stall = stallData[indStall?.stallNumber - 1];
+            const index = indStall?.stallNumber - 1;
             const {
               actualBatterUsed,
               idliesSold,
@@ -120,7 +215,7 @@ const DailyTracking = () => {
               dosasPerKG,
             } = stallCalc(stall);
             return (
-              <Grid item xs={12} key={index}>
+              <Grid item xs={12} key={curIndex}>
                 <Box
                   sx={{
                     border: '1px solid #ccc',
@@ -366,8 +461,8 @@ const DailyTracking = () => {
             Submit
           </Button>
         </Box>
-      </LocalizationProvider>
-    </Box>
+      </Box>
+    </div>
   );
 };
 
