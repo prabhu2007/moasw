@@ -3,3 +3,11 @@
   padding: 10px;
   margin-right: 10px;
 }
+
+.d-flex {
+  display: flex;
+}
+
+.simple-red-border {
+  padding-top: 10px;
+}

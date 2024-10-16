@@ -1,10 +1,13 @@
 import { CONSTS } from '../CONSTS';
 
 export const stallCalc = (stall) => {
-  const actualBatterUsed =
-    parseFloat(stall?.sentCan1 || 0) +
-    parseFloat(stall?.sentCan2 || 0) -
-    (parseFloat(stall?.returnCan1 || 0) + parseFloat(stall?.returnCan2 || 0));
+  const actualBatterUsed = Number(
+    (
+      parseFloat(stall?.sentCan1 || 0) +
+      parseFloat(stall?.sentCan2 || 0) -
+      (parseFloat(stall?.returnCan1 || 0) + parseFloat(stall?.returnCan2 || 0))
+    ).toFixed(2),
+  );
 
   const idliesSold =
     parseFloat(stall?.sentIdlies || 0) - parseFloat(stall?.returnIdlies || 0);
@@ -22,7 +25,7 @@ export const stallCalc = (stall) => {
     parseFloat(stall?.sentIdlyPackets || 0) -
     parseFloat(stall?.returnIdlyPackets || 0);
 
-  const amount = Number(stall?.cash || 0) + Number(stall?.online || 0);
+  const totalAmount = Number(stall?.cash || 0) + Number(stall?.online || 0);
   const revenueFromIdlies = idliesSold * CONSTS.perIdlyCost;
   const revenueFromIdlyPackets = idlyPacketsSold * CONSTS.perIdlyPacketCost;
   const revenueFromDosaPackets = dosaPacketsSold * CONSTS.perDosaPacketCost;
@@ -31,7 +34,7 @@ export const stallCalc = (stall) => {
 
   console.log(
     'Amount : ',
-    amount,
+    totalAmount,
     'totalRevenueFromItems : ',
     totalRevenueFromItems,
     'actualBatterUsed : ',
@@ -39,11 +42,13 @@ export const stallCalc = (stall) => {
   );
   const dosasPerKG =
     actualBatterUsed > 0
-      ? (
-          (amount - totalRevenueFromItems) /
-          actualBatterUsed /
-          CONSTS.perDosaCost
-        ).toFixed(2)
+      ? Number(
+          (
+            (totalAmount - totalRevenueFromItems) /
+            actualBatterUsed /
+            CONSTS.perDosaCost
+          ).toFixed(2),
+        )
       : 0;
 
   return {
@@ -52,5 +57,6 @@ export const stallCalc = (stall) => {
     dosaPacketsSold,
     idlyPacketsSold,
     dosasPerKG,
+    totalAmount,
   };
 };

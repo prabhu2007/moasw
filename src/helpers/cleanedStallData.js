@@ -1,4 +1,5 @@
 import dayjs from 'dayjs';
+import { getTotalDetailsHelper } from './getTotalDetailsHelper';
 
 const cleanedStallData = (stallData, rawMaterialDetails) => {
   const date =
@@ -7,6 +8,15 @@ const cleanedStallData = (stallData, rawMaterialDetails) => {
       : dayjs(rawMaterialDetails.date).format('YYYY-MM-DD');
   const time = rawMaterialDetails.time === '' ? null : rawMaterialDetails.time;
   const stallUpdatedData = stallData.map((stall) => {
+    const totalAmount = stall.online + stall.cash;
+    console.log(
+      'stall.online : ',
+      stall.online,
+      'stall.cash : ',
+      stall.cash,
+      'Amount: ',
+      totalAmount,
+    );
     return {
       ...stall,
       date,
@@ -35,8 +45,10 @@ const cleanedStallData = (stallData, rawMaterialDetails) => {
       idlyPacketsSold:
         stall.idlyPacketsSold === '' ? null : stall.idlyPacketsSold,
       dosasPerKG: stall.dosasPerKG === '' ? null : stall.dosasPerKG,
+      totalAmount: totalAmount ? totalAmount : null,
     };
   });
+  const { pindiUsed } = getTotalDetailsHelper(stallData);
   const rawMaterialData = {
     ...rawMaterialDetails,
     date:
@@ -72,6 +84,7 @@ const cleanedStallData = (stallData, rawMaterialDetails) => {
       rawMaterialDetails.idlyGullu === '' ? null : rawMaterialDetails.idlyGullu,
     idlyPindi:
       rawMaterialDetails.idlyPindi === '' ? null : rawMaterialDetails.idlyPindi,
+    pindiUsed,
   };
   return { stallUpdatedData, rawMaterialData };
 };

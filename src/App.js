@@ -7,6 +7,7 @@ import {
   fetchDailyTrackingData,
   fetchUnitData,
 } from './helpers/fetchDailyTrackingData';
+import { getTotalDetailsHelper } from './helpers/getTotalDetailsHelper';
 import { initialRawmeterialData } from './helpers/initialRawmeterialData';
 import { initialStallData } from './helpers/intialStallData';
 import { sanitizedData } from './helpers/sanitizedData';
@@ -17,7 +18,7 @@ import { supabase } from './supabaseClient';
 const stalls = Array.from({ length: 6 }, (_, i) => `MoA ${i + 1}`);
 const DailyTracking = () => {
   const [stallData, setStallData] = useState(initialStallData(stalls));
-
+  const [toatlDailyData, setToatlDailyData] = useState({});
   const [rawMaterialDetails, setRawMaterialDetails] = useState(
     initialRawmeterialData(),
   );
@@ -37,14 +38,20 @@ const DailyTracking = () => {
         setLoading(true); // Set loading state before fetching
 
         // Fetch daily_tracking data using helper
-        const dailyTracking = await fetchDailyTrackingData(date, time);
+        const rawDailyTracking = await fetchDailyTrackingData(date, time);
+        const dailyTracking = rawDailyTracking.sort(
+          (a, b) => a.stallNumber - b.stallNumber,
+        );
         setDailyTrackingData(dailyTracking);
         // Update stallData based on dailyTrackingData
         if (dailyTracking && dailyTracking.length > 0) {
           const updatedDailyTrackingData = sanitizedData(dailyTracking);
           setStallData(updatedDailyTrackingData);
+          setToatlDailyData(getTotalDetailsHelper(updatedDailyTrackingData));
         } else {
-          setStallData(initialStallData(stalls)); // Use initialStallData if no data is found
+          const initStallData = initialStallData(stalls);
+          setStallData(initStallData); // Use initialStallData if no data is found
+          setToatlDailyData(getTotalDetailsHelper(initStallData));
         }
         // Fetch unit data using helper
         const unitData = await fetchUnitData(date, time);
@@ -143,7 +150,7 @@ const DailyTracking = () => {
       const { data: stallData, error: stallError } = await supabase
         .from('daily_tracking')
         .upsert(data.stallUpdatedData, {
-          onConflict: ['id'], // Use 'id' column to determine whether to update or insert
+          onConflict: ['date', 'time', 'stallNumber'],
         });
 
       if (stallError) {
@@ -159,7 +166,7 @@ const DailyTracking = () => {
       const { data: rawData, error: rawError } = await supabase
         .from('unit')
         .upsert(data.rawMaterialData, {
-          onConflict: ['id'], // Use 'id' column to determine whether to update or insert
+          onConflict: ['date', 'time'],
         });
 
       if (rawError) {
@@ -190,6 +197,7 @@ const DailyTracking = () => {
     };
     console.log('newStallData : ', newStallData);
     setStallData(newStallData);
+    setToatlDailyData(getTotalDetailsHelper(newStallData));
   };
 
   return (
@@ -214,6 +222,7 @@ const DailyTracking = () => {
         <RawMaterialDetails
           setRawMaterialDetails={setRawMaterialDetails}
           rawMaterialDetails={rawMaterialDetails}
+          toatlDailyData={toatlDailyData}
         />
         <Grid container spacing={2} sx={{ marginTop: 2 }}>
           {stallData.map((indStall, curIndex) => {
@@ -225,6 +234,7 @@ const DailyTracking = () => {
               dosaPacketsSold,
               idlyPacketsSold,
               dosasPerKG,
+              totalAmount,
             } = stallCalc(stall);
             return (
               <Grid item xs={12} key={curIndex}>
@@ -277,6 +287,20 @@ const DailyTracking = () => {
                   />
                   <TextField
                     type="number"
+                    label="Idlies"
+                    value={stall.sentIdlies}
+                    onChange={(e) =>
+                      handleInputChange(
+                        index,
+                        'sentIdlies',
+                        Number(e.target.value),
+                        stall,
+                      )
+                    }
+                    sx={{ width: '100px', marginRight: 1 }}
+                  />
+                  <TextField
+                    type="number"
                     label="Dosa Packets"
                     value={stall.sentDosaPackets}
                     onChange={(e) =>
@@ -302,20 +326,6 @@ const DailyTracking = () => {
                       )
                     }
                     sx={{ width: '120px', marginRight: 1 }}
-                  />
-                  <TextField
-                    type="number"
-                    label="Idlies"
-                    value={stall.sentIdlies}
-                    onChange={(e) =>
-                      handleInputChange(
-                        index,
-                        'sentIdlies',
-                        Number(e.target.value),
-                        stall,
-                      )
-                    }
-                    sx={{ width: '100px', marginRight: 1 }}
                   />
 
                   {/* Return Section */}
@@ -355,6 +365,20 @@ const DailyTracking = () => {
                   />
                   <TextField
                     type="number"
+                    label="Return Idlies"
+                    value={stall.returnIdlies}
+                    onChange={(e) =>
+                      handleInputChange(
+                        index,
+                        'returnIdlies',
+                        Number(e.target.value),
+                        stall,
+                      )
+                    }
+                    sx={{ width: '120px', marginRight: 1 }}
+                  />
+                  <TextField
+                    type="number"
                     label="Return Dosa Packets"
                     value={stall.returnDosaPackets}
                     onChange={(e) =>
@@ -380,20 +404,6 @@ const DailyTracking = () => {
                       )
                     }
                     sx={{ width: '140px', marginRight: 1 }}
-                  />
-                  <TextField
-                    type="number"
-                    label="Return Idlies"
-                    value={stall.returnIdlies}
-                    onChange={(e) =>
-                      handleInputChange(
-                        index,
-                        'returnIdlies',
-                        Number(e.target.value),
-                        stall,
-                      )
-                    }
-                    sx={{ width: '120px', marginRight: 1 }}
                   />
 
                   <TextField
@@ -425,6 +435,15 @@ const DailyTracking = () => {
                     type="number"
                     sx={{ width: '120px', marginRight: 1 }}
                   />
+                  <TextField
+                    label="Remarks"
+                    value={stall.remarks}
+                    onChange={(e) =>
+                      handleInputChange(index, 'remarks', e.target.value, stall)
+                    }
+                    type="text"
+                    sx={{ width: '250px', marginRight: 1 }}
+                  />
                   <div>
                     <Box
                       key={index}
@@ -435,8 +454,19 @@ const DailyTracking = () => {
                         marginTop: 2,
                       }}
                     >
+                      <Typography
+                        sx={{
+                          color: '#fff',
+                          backgroundColor: dosasPerKG < 22 ? 'red' : 'green',
+                          padding: '3px',
+                          fontWeight: '900',
+                        }}
+                      >
+                        Dosas per KG: {dosasPerKG}
+                      </Typography>
+                      <Typography>Total Amount: Rs. {totalAmount}</Typography>
                       <Typography>
-                        Actual Batter Used: {actualBatterUsed.toFixed(2)} kg
+                        Actual Batter Used: {actualBatterUsed} kg
                       </Typography>
                       <Typography>Idlies Sold: {idliesSold}</Typography>
                       <Typography>
@@ -444,13 +474,6 @@ const DailyTracking = () => {
                       </Typography>
                       <Typography>
                         Idly Packets Sold: {idlyPacketsSold}
-                      </Typography>
-                      <Typography
-                        sx={{
-                          color: dosasPerKG < 22 ? 'red' : 'green',
-                        }}
-                      >
-                        Dosas per KG: {dosasPerKG}
                       </Typography>
                     </Box>
                   </div>

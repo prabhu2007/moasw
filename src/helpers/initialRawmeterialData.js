@@ -12,5 +12,6 @@ export const initialRawmeterialData = () => {
     drum3Pindi: 0,
     idlyGullu: 0,
     idlyPindi: 0,
+    pindiUsed: 0,
   };
 };

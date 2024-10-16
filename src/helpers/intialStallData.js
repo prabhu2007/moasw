@@ -18,6 +18,7 @@ export const initialStallData = (stalls) => {
     dosaPacketsSold: '',
     idlyPacketsSold: '',
     dosasPerKG: '',
-    remarks: 'Test',
+    remarks: '',
+    totalAmount: '',
   }));
 };
