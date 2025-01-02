@@ -15,7 +15,7 @@ import { stallCalc } from './helpers/stallCalc';
 import './styles.css';
 import { supabase } from './supabaseClient';
 
-const stalls = Array.from({ length: 6 }, (_, i) => `MoA ${i + 1}`);
+const stalls = Array.from({ length: 7 }, (_, i) => `MoA ${i + 1}`);
 const DailyTracking = () => {
   const [stallData, setStallData] = useState(initialStallData(stalls));
   const [toatlDailyData, setToatlDailyData] = useState({});
